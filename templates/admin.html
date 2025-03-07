@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Management - Admin Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Adjust alignment to start at the top */
+            min-height: 100vh; /* Ensure the body takes the full viewport height */
+        }
+        header {
+    text-align: center;  /* Center the logo */
+    margin-bottom: 20px; /* Add space below */
+    }
+    label {
+    display: block;
+    text-align: left;
+    font-weight: bold;
+    margin: 10px 0 5px;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+.button1{
+    background-color: red;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    text-align: right;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+
+.company-logo {
+    width: 250px;  /* Adjust size */
+    max-width: 100%; /* Ensure responsiveness */
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    }
+
+.visitor-photo {
+    width: 50px; /* Adjust as needed */
+    height: 50px;
+    object-fit: cover;
+    border-radius: 50%; /* Optional: Makes the image circular */
+    border: 1px solid #ccc;
+    }
+
+        .drivers-table{
+            width: 100%;
+            text-align: center;
+        }
+        table{
+            width: 100%;
+            text-align: center;
+        }
+        table th, table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+
+    table th {
+        background-color: #f4f4f4;
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Company Logo" class="company-logo">
+        </header>
+        
+        <h1>Driver Records Admin Dashboard</h1>
+        
+        <!-- Export Button -->
+        <div class="export-controls">
+            <button id="export-csv">Export to CSV</button>
+            <button type="button" onclick="navigateToDrivers()" class="button1">Back to Check-In</button>
+
+        </div>
+        
+        <!-- Search and Filter Controls -->
+        <div class="filter-controls">
+            <input type="text" id="search-input" placeholder="Search...">
+            <select id="status-filter">
+                <option value="all">All Drivers</option>
+                <option value="active">Currently In Warehouse</option>
+                <option value="checked-out">Checked Out</option>
+            </select>
+            <input type="date" id="date-filter">
+        </div>
+        
+        <!-- Driver Records Table -->
+         <div class="table-responsive">
+        <div class="drivers-table">
+        <table id="drivers-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Provider</th>
+                    <th>License</th>
+                    <th>Card ID</th>
+                    <th>Purpose</th>
+                    <th>Contact</th>
+                    <th>Check-In</th>
+                    <th>Check-Out</th>
+                    <th>License Photo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for driver in drivers %}
+                <tr class="{{ 'active' if driver.check_out_time is none else 'inactive' }}">
+                    <td>{{ driver.id }}</td>
+                    <td>{{ driver.name }}</td>
+                    <td>{{ driver.provider_name }}</td>
+                    <td>{{ driver.truck_license }}</td>
+                    <td>{{ driver.card_id }}</td>
+                    <td>{{ purpose_translations.get(driver.purpose_of_visit, driver.purpose_of_visit) }}</td>
+                    <td>{{ driver.point_of_contact }}</td>
+                    <td>{{ driver.formatted_check_in }}</td>
+                    <td>{{ driver.formatted_checkout }}</td>
+                    <td>
+                        {% if driver.photo_path %}
+                        <a href="{{ driver.photo_path }}" target="_blank">
+                            <img src="{{ driver.photo_path  }}" alt="License Photo" style="width: 100px; height: auto;">
+                        </a>
+                        {% else %}
+                        No photo
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    </div>
+    </div>
+
+    <script>
+        // Search and filtering functionality
+        document.getElementById('search-input').addEventListener('keyup', filterTable);
+        document.getElementById('status-filter').addEventListener('change', filterTable);
+        document.getElementById('date-filter').addEventListener('change', filterTable);
+
+        function filterTable() {
+            const searchText = document.getElementById('search-input').value.toLowerCase();
+            const statusFilter = document.getElementById('status-filter').value;
+            const dateFilter = document.getElementById('date-filter').value;
+            
+            const rows = document.querySelectorAll('#drivers-table tbody tr');
+            
+            rows.forEach(row => {
+                let shouldShow = true;
+                
+                // Text search
+                if (searchText) {
+                    let textMatch = false;
+                    row.querySelectorAll('td').forEach(cell => {
+                        if (cell.textContent.toLowerCase().includes(searchText)) {
+                            textMatch = true;
+                        }
+                    });
+                    shouldShow = shouldShow && textMatch;
+                }
+                
+                // Status filter
+                if (statusFilter === 'active' && !row.classList.contains('active')) {
+                    shouldShow = false;
+                } else if (statusFilter === 'checked-out' && row.classList.contains('active')) {
+                    shouldShow = false;
+                }
+                
+                // Date filter
+                if (dateFilter) {
+                    const checkInDate = row.querySelectorAll('td')[7].textContent.split(' ')[0];
+                    if (checkInDate !== dateFilter) {
+                        shouldShow = false;
+                    }
+                }
+                
+                row.style.display = shouldShow ? '' : 'none';
+            });
+        }
+
+        function navigateToDrivers() {
+            window.location.href = "{{ url_for('drivers') }}"
+        }
+
+        // CSV Export
+        document.getElementById('export-csv').addEventListener('click', function() {
+            let csv = 'ID,Name,Provider,License,Card ID,Purpose,Contact,Check-In,Check-Out\n';
+            
+            const rows = document.querySelectorAll('#drivers-table tbody tr');
+            rows.forEach(row => {
+                if (row.style.display !== 'none') {
+                    const cells = row.querySelectorAll('td');
+                    const rowData = [];
+                    
+                    // Get all cells except the photo
+                    for (let i = 0; i < cells.length - 1; i++) {
+                        let cellData = cells[i].textContent.trim();
+                        // Escape commas and quotes
+                        cellData = cellData.replace(/"/g, '""');
+                        if (cellData.includes(',') || cellData.includes('"')) {
+                            cellData = `"${cellData}"`;
+                        }
+                        rowData.push(cellData);
+                    }
+                    
+                    csv += rowData.join(',') + '\n';
+                }
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'driver_records_' + new Date().toISOString().slice(0,10) + '.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        //event fires when the page is about to be unloaded (closed or navigated away from)
+        window.addEventListener('beforeunload', function(e) {
+        //Make call to the logout endpoint
+        navigator.sendBeacon('/admin-exit');
+        });
+    </script>
+</body>
+</html>

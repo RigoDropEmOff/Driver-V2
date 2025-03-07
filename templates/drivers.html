@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+
+<!--Nav removed, adjust CSS-->
+
+<body>
+    <div class="container">
+
+        <header>
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Company Logo" class="company-logo">
+        </header>
+        
+        <h1>Driver Management</h1>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul>
+                    {% for category, message in messages %}
+                        <li class="flash-messages {{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+<!-- Driver Check-In Form -->
+<form method="POST" enctype="multipart/form-data">
+    <label for="driver_name">Name:</label>
+    <input type="text" id="driver_name" name="driver_name" required>
+
+    <label for="provider_name">Provider:</label>
+    <input type="text" id="provider_name" name="Provider" required>
+
+    <label for="purpose_of_visit">Purpose of Visit:</label>
+    <select id="purpose_of_visit" name="purpose_of_visit" required>
+        <option value="" disabled selected>Select purpose</option>
+        <option value="entrega de productos">Product Delivery</option>
+        <option value="reunión">Meeting</option>
+        <option value="inspeccion">Inspection</option>
+        <option value="reparacion de cajas">Trailer Repair</option>
+        <option value="Guardia">Security</option>
+        <option value="otros">Other</option>
+    </select>
+
+    <label for="point_of_contact">Point of Contact:</label>
+    <input type="text" id="point_of_contact" name="point_of_contact" required>
+
+    <!--<label for="truck_license">Driver License Number:</label>
+    <div class="inline-field">
+        <input type="text" id="truck_license" name="truck_license" required>
+        <button type="button" id="photo-button" class="inline-button">Take Photo of Driver License</button>
+    </div>-->
+
+    <div class="photo-upload-area">
+        <label>License Photo:</label>
+        <div class="photo-placeholder">
+          <img src="/static/driver-license-icon-jpg.png" alt="Camera" id="camera-icon">
+          <span>Click to take or upload photo</span>
+          <button type="button" id="photo-button" class="inline-button">Take Photo</button>
+        </div>
+        <input type="hidden" id="truck_license" name="truck_license" value="Photo Provided">
+        <input type="hidden" id="photo_data" name="photo_data">
+        <div id="photo-preview" style="display: none;">
+          <img id="preview-image" src="" alt="Preview">
+          <button type="button" id="retake-photo-btn" class="btn">Retake</button>
+        </div>
+      </div>
+
+    <label for="card_id">Assign Card ID:</label>
+    <input type="text" id="card_id" name="card_id" readonly required>
+
+<!-- Button Container for Check-In and Check-Out -->
+<div class="button-container">
+    <button type="button" id="scan-qr-button">Check In Driver</button>
+    <button type="button" id="check-out-qr-button" class="red-button">Check Out Driver</button>
+</div>
+<div id="qr-reader" style="width: 100%; margin-top: 10px; display: none;"></div>
+<div id="checkout-qr-reader" style="display: none; margin-top: 10px; width: 100%;"></div>
+
+    <!-- Hidden Field to Store Captured Photo Data -->
+    <input type="hidden" id="photo-data" name="photo_data">
+
+    <!-- Confirmation Popup -->
+    <div id="confirmation-popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <p>Does the photo look correct?</p>
+        <img id="popup-photo-preview" style="width: 100%; margin-top: 10px;" alt="Popup Photo Preview">
+        <button type="button" id="confirm-button" style="margin-top: 10px;">Yes</button>
+        <button type="button" id="retake-button" style="margin-top: 10px;">Retake</button>
+    </div>
+</form>
+   
+        <!-- Active Drivers List -->
+         <div class="table-responsive">
+        <h2>Drivers in Warehouse</h2>
+        {% if drivers %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Card ID</th>
+                        <th>Name</th>
+                        <th>Provider</th>
+                        
+                        <th>Check-In Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for driver in drivers %}
+                        <tr>
+                            <td>{{ driver.card_id }}</td>
+                            <td>{{ driver.name }}</td>
+                            <td>{{ driver.provider_name }}</td>
+                            
+                            <td>{{ driver.formatted_check_in }}</td>
+            
+                            <td>
+                                <form method="POST" action="{{ url_for('checkout', card_id=driver.card_id) }}" style="display:inline;">
+                                    <button type="submit">Check-Out</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No drivers currently in the warehouse.</p>
+        {% endif %}
+    </div>
+    </div>
+
+    <script>
+    // QR Code Scanner for Assigning Card ID and Auto Check-In
+    const scanQrButton = document.getElementById("scan-qr-button");
+    const qrReaderDiv = document.getElementById("qr-reader");
+    const cardIdInput = document.getElementById("card_id");
+
+    scanQrButton.addEventListener("click", () => {
+        qrReaderDiv.style.display = "block";
+
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            (decodedText) => {
+                // Automatically populate the card ID field
+                cardIdInput.value = decodedText;
+
+                // Send data to the server for automatic check-in
+                const formData = new FormData();
+                formData.append("card_id", decodedText);
+
+                // Include other form fields if needed
+                const driverName = document.getElementById("driver_name").value;
+                const providerName = document.getElementById("provider_name").value;
+                const truckLicense = document.getElementById("truck_license").value;
+                const purposeOfVisit = document.getElementById("purpose_of_visit").value || ""; // Ensure it's not null
+                const pointOfContact = document.getElementById("point_of_contact").value || ""; // Ensure it's not null
+                const photoData = document.getElementById("photo-data").value;
+
+                console.log("Sending Data:", {
+    driver_name: driverName,
+    provider_name: providerName,
+    truck_license: truckLicense,
+    purpose_of_visit: purposeOfVisit,
+    point_of_contact: pointOfContact,
+    photo_data: photoData
+});
+
+                formData.append("driver_name", driverName);
+                formData.append("provider_name", providerName);
+                formData.append("truck_license", truckLicense);
+                formData.append("purpose_of_visit", purposeOfVisit);
+                formData.append("point_of_contact", pointOfContact);
+                formData.append("photo_data", photoData);
+
+                
+                fetch("/drivers", {
+                    method: "POST",
+                    body: formData,
+                })
+                    .then((response) => {
+                        if (response.ok) {
+                            alert("Driver checked in successfully!");
+                            location.reload(); // Refresh the page to update the list
+                        } else {
+                            alert("Failed to check in driver. Please try again.");
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("Error during check-in:", err);
+                        alert("An error occurred. Please try again.");
+                    });
+
+                // Stop the QR code scanner
+                html5QrCode.stop().then(() => {
+                    qrReaderDiv.style.display = "none";
+                }).catch((err) => {
+                    console.error("Error stopping QR Code scanner:", err);
+                });
+            },
+            (errorMessage) => {
+                console.warn("QR Code Scan Error:", errorMessage);
+            }
+        ).catch((err) => {
+            console.error("QR Code Scanner Initialization Error:", err);
+        });
+    });
+
+        // QR Code Scanner for Driver Check-Out
+        const checkOutQrButton = document.getElementById("check-out-qr-button");
+        const checkoutQrReaderDiv = document.getElementById("checkout-qr-reader");
+
+        checkOutQrButton.addEventListener("click", () => {
+            checkoutQrReaderDiv.style.display = "block";
+
+            const html5QrCode = new Html5Qrcode("checkout-qr-reader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 250 },
+                (decodedText) => {
+                    console.log("Decoded QR Code for Check Out:", decodedText);
+
+                    // Send the decoded text (card ID) to the server for check out
+                    fetch(`/checkout/${encodeURIComponent(decodedText)}`, {
+                        method: "POST"
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            alert("Driver checked out successfully!");
+                            location.reload();
+                        } else {
+                            alert("Failed to check out driver. Please try again.");
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Error during check out:", err);
+                        alert("An error occurred. Please try again.");
+                    });
+
+                    // Stop the QR code scanner
+                    html5QrCode.stop().then(() => {
+                        checkoutQrReaderDiv.style.display = "none";
+                    }).catch(err => {
+                        console.error("Error stopping QR Code scanner:", err);
+                    });
+                },
+                (errorMessage) => {
+                    console.warn("QR Code Scan Error:", errorMessage);
+                }
+            ).catch((err) => {
+                console.error("QR Code Scanner Initialization Error:", err);
+            });
+        });
+
+// Photo Capture Script using MediaDevices API
+// Open Camera
+// Add this at the beginning of your script to check if elements exist
+//
+
+// Ensure the DOM is fully loaded before running the script
+document.addEventListener("DOMContentLoaded", function () {
+    console.log("DOM fully loaded");
+
+    // Select necessary elements
+    const photoButton = document.getElementById("photo-button");
+    const photoDataInput = document.getElementById("photo-data");
+    const popup = document.getElementById("confirmation-popup");
+    const popupPhotoPreview = document.getElementById("popup-photo-preview");
+    const confirmButton = document.getElementById("confirm-button");
+    const retakeButton = document.getElementById("retake-button");
+
+    console.log("Elements found:", {
+        photoButton: !!photoButton,
+        photoDataInput: !!photoDataInput,
+        popup: !!popup,
+        popupPhotoPreview: !!popupPhotoPreview,
+        confirmButton: !!confirmButton,
+        retakeButton: !!retakeButton
+    });
+
+    // Function to handle fallback file input for photo selection
+    function useFileInputFallback() {
+        console.log("Using file input fallback");
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+
+        input.addEventListener("change", () => {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    popupPhotoPreview.src = e.target.result;
+                    photoDataInput.value = e.target.result.split(',')[1]; // Remove prefix
+                    popup.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        input.click();
+    }
+
+    // Photo button event listener
+    photoButton.addEventListener("click", () => {
+        console.log("Photo button clicked");
+
+        // Check if the MediaDevices API is supported
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            console.log("MediaDevices API supported");
+
+            // Create video and canvas elements for capturing
+            const videoElement = document.createElement("video");
+            videoElement.autoplay = true;
+            videoElement.style.display = "none";
+            document.body.appendChild(videoElement);
+
+            const canvasElement = document.createElement("canvas");
+            canvasElement.style.display = "none";
+            document.body.appendChild(canvasElement);
+
+            // Access camera
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(stream => {
+                    console.log("Camera access granted");
+                    videoElement.srcObject = stream;
+
+                    // Create snapshot UI
+                    const snapshotDiv = document.createElement("div");
+                    snapshotDiv.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background-color: rgba(0,0,0,0.8);
+                        z-index: 1000;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                    `;
+
+                    const previewVideo = document.createElement("video");
+                    previewVideo.autoplay = true;
+                    previewVideo.srcObject = stream;
+                    previewVideo.style.cssText = "width: 80%; max-height: 80vh; object-fit: contain;";
+
+                    const takePhotoBtn = document.createElement("button");
+                    takePhotoBtn.textContent = "Take Photo";
+                    takePhotoBtn.style.cssText = "margin-top: 10px; padding: 10px 20px;";
+
+                    const cancelBtn = document.createElement("button");
+                    cancelBtn.textContent = "Cancel";
+                    cancelBtn.style.cssText = "margin-top: 10px; padding: 10px 20px;";
+
+                    snapshotDiv.appendChild(previewVideo);
+                    snapshotDiv.appendChild(takePhotoBtn);
+                    snapshotDiv.appendChild(cancelBtn);
+                    document.body.appendChild(snapshotDiv);
+
+                    // Event listener to take a photo
+                    takePhotoBtn.addEventListener("click", () => {
+                        console.log("Take photo button clicked");
+
+                        // Set canvas dimensions
+                        const width = previewVideo.videoWidth;
+                        const height = previewVideo.videoHeight;
+                        canvasElement.width = width;
+                        canvasElement.height = height;
+
+                        // Capture the photo from video stream
+                        const context = canvasElement.getContext("2d");
+                        context.drawImage(previewVideo, 0, 0, width, height);
+
+                        // Convert to Base64 format
+                        let imageData = canvasElement.toDataURL("image/jpeg");
+
+                        // Debugging: Check if the imageData is correctly captured
+                        console.log("Captured Image Base64:", imageData.substring(0, 100));
+
+                        // Remove the "data:image/jpeg;base64," prefix before sending to Flask
+                        let base64ImageData = imageData.split(",")[1];
+                        photoDataInput.value = base64ImageData;
+
+                        console.log("Formatted Base64 Image Data:", base64ImageData.substring(0, 100));
+
+                        // Show preview in confirmation popup
+                        popupPhotoPreview.src = imageData;
+                        popup.style.display = "block";
+
+                        // Cleanup: Stop video stream and remove UI elements
+                        stream.getTracks().forEach(track => track.stop());
+                        document.body.removeChild(snapshotDiv);
+                        document.body.removeChild(videoElement);
+                        document.body.removeChild(canvasElement);
+                    });
+
+                    // Cancel button event listener
+                    cancelBtn.addEventListener("click", () => {
+                        console.log("Cancel button clicked");
+                        stream.getTracks().forEach(track => track.stop());
+                        document.body.removeChild(snapshotDiv);
+                        document.body.removeChild(videoElement);
+                        document.body.removeChild(canvasElement);
+                    });
+
+                })
+                .catch(error => {
+                    console.error("Error accessing camera:", error);
+                    // Fallback to file input if camera access fails
+                    useFileInputFallback();
+                });
+
+        } else {
+            console.log("MediaDevices API not supported");
+            // Use file input fallback if camera access is not supported
+            useFileInputFallback();
+        }
+    });
+
+    // Confirm Photo
+    confirmButton.addEventListener("click", () => {
+        console.log("Confirm button clicked");
+        popup.style.display = "none"; // Hide popup
+    });
+
+    // Retake Photo
+    retakeButton.addEventListener("click", () => {
+        console.log("Retake button clicked");
+        popup.style.display = "none"; // Hide popup
+        photoDataInput.value = ""; // Clear the hidden input
+    });
+});
+
+    </script>
+</body>
+</html>

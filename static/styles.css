@@ -1,0 +1,309 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Adjust alignment to start at the top */
+    min-height: 100vh; /* Ensure the body takes the full viewport height */
+}
+
+.container {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 100%;
+    padding: 0 20px;
+    text-align: center;
+    margin-top: 20px; /* Add margin for spacing from the top */
+    padding-top: 70px;
+    margin: 0 auto;
+    box-sizing: border-box;;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 24px;
+    text-align: center; /* Ensure the title is centered */
+    word-wrap: break-word; /* Prevent text overflow on smaller screens */
+}
+
+form {
+    margin-top: 20px;
+}
+
+label {
+    display: block;
+    text-align: left;
+    font-weight: bold;
+    margin: 10px 0 5px;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+.flash-messages {
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.flash-messages.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.flash-messages.danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+table th, table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+table th {
+    background-color: #f4f4f4;
+}
+
+.red-button {
+    background-color: red;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.red-button:hover {
+    background-color: darkred;
+}
+
+/* Mobile Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 10px; /* Add padding for better spacing on smaller screens */
+    }
+
+    h1 {
+        font-size: 20px; /* Reduce title size for smaller screens */
+    }
+
+    .container {
+        padding: 70px 15px 15px; /* Add top padding to prevent overlap */
+        max-width: 750px;
+    }
+
+    input, select, button {
+        font-size: 14px; /* Adjust input and button sizes for smaller screens */
+    }
+
+    label {
+        font-size: 14px; /* Adjust label size for smaller screens */
+    }
+    table {
+        width: 100%;
+        table-layout: fixed;
+      }
+      
+      /* Handle long text in cells */
+      td {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 100px; /* Adjust as needed */
+      }
+      
+      /* Make card ID and similar columns dynamically sized */
+      td.card-id {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+}
+
+
+.button-container {
+    display: flex;
+    justify-content: space-between; /* Space between the buttons */
+    gap: 10px; /* Add spacing between buttons */
+    margin-top: 20px; /* Add some space above the buttons */
+}
+
+button {
+    flex: 1; /* Ensure buttons take equal space */
+    text-align: center; /* Center text inside the buttons */
+}
+
+nav {
+    width: 100%;
+    background-color: #333; /* Dark background */
+    padding: 10px 0;
+    text-align: center; /* Centers the links */
+    position: fixed; /* Makes it stick to the top */
+    top: 0;
+    left: 0;
+    z-index: 1000; /* Ensures it's above other content */
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    font-size: 18px;
+    margin: 0 15px;
+    padding: 10px 15px;
+    display: inline-block;
+}
+
+nav a:hover {
+    background-color: #555;
+    border-radius: 5px;
+}
+
+.checkout-button {
+    background-color: red;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.checkout-button:hover {
+    background-color: darkred;
+}
+
+.checked-out {
+    color: gray;
+    font-weight: bold;
+}
+
+header {
+    text-align: center;  /* Center the logo */
+    margin-bottom: 20px; /* Add space below */
+}
+
+.company-logo {
+    width: 250px;  /* Adjust size */
+    max-width: 100%; /* Ensure responsiveness */
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+.visitor-photo {
+    width: 50px; /* Adjust as needed */
+    height: 50px;
+    object-fit: cover;
+    border-radius: 50%; /* Optional: Makes the image circular */
+    border: 1px solid #ccc;
+}
+
+.badge-number {
+    font-size: 24px;  /* Make text larger */
+    font-weight: bold;  /* Make it bold */
+    color: #007bff;  /* Blue color */
+    display: block;  /* Ensures it appears on its own line */
+    margin-top: 10px;  /* Add space above it */
+}
+
+.table-responsive{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+}
+/*Photo Icon Style*/
+.photo-upload-area {
+  margin-bottom: 15px;
+}
+
+.photo-placeholder {
+  border: 2px dashed #ccc;
+  border-radius: 5px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  background-color: #f9f9f9;
+  margin-top: 5px;
+}
+
+.photo-placeholder img {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 10px;
+}
+
+.photo-placeholder span {
+  display: block;
+  margin-bottom: 10px;
+  color: #666;
+}
+
+#photo-preview {
+  margin-top: 10px;
+  text-align: center;
+}
+
+#preview-image {
+  max-width: 100%;
+  max-height: 200px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+#take-photo-btn, #retake-photo-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+#take-photo-btn:hover, #retake-photo-btn:hover {
+  background-color: #45a049;
+}
+
+/* Make sure the form fields don't overflow on smaller screens */
+.container form input[type="text"],
+.container form select {
+  width: 100%;
+  box-sizing: border-box;
+}
