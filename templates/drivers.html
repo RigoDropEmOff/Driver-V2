@@ -59,6 +59,9 @@
         <option value="Brenda Ceballos ">Brenda Ceballos </option>
     </select>
 
+    <label for="plate_number">License Plate Number:</label>
+    <input type="text" id="plate_number" name="plate_number" required>
+
     <!--<label for="truck_license">Driver License Number:</label>
     <div class="inline-field">
         <input type="text" id="truck_license" name="truck_license" required>
@@ -170,6 +173,7 @@
                 const purposeOfVisit = document.getElementById("purpose_of_visit").value || ""; // Ensure it's not null
                 const pointOfContact = document.getElementById("point_of_contact").value || ""; // Ensure it's not null
                 const photoData = document.getElementById("photo-data").value;
+                const plateNumber = document.getElementById("plate_number").value;
 
                 console.log("Sending Data:", {
     driver_name: driverName,
@@ -177,7 +181,8 @@
     truck_license: truckLicense,
     purpose_of_visit: purposeOfVisit,
     point_of_contact: pointOfContact,
-    photo_data: photoData
+    photo_data: photoData,
+    plate_number: plateNumber
 });
 
                 formData.append("driver_name", driverName);
@@ -186,6 +191,7 @@
                 formData.append("purpose_of_visit", purposeOfVisit);
                 formData.append("point_of_contact", pointOfContact);
                 formData.append("photo_data", photoData);
+                formData.append("plate_number", plateNumber)
 
                 
                 fetch("/drivers", {

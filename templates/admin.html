@@ -133,6 +133,7 @@ button:hover {
                     <th>License</th>
                     <th>Card ID</th>
                     <th>Purpose</th>
+                    <th>License Plate</th>
                     <th>Contact</th>
                     <th>Check-In</th>
                     <th>Check-Out</th>
@@ -148,6 +149,7 @@ button:hover {
                     <td>{{ driver.truck_license }}</td>
                     <td>{{ driver.card_id }}</td>
                     <td>{{ purpose_translations.get(driver.purpose_of_visit, driver.purpose_of_visit) }}</td>
+                    <td>{{ driver.plate_number }}</td>
                     <td>{{ driver.point_of_contact }}</td>
                     <td>{{ driver.formatted_check_in }}</td>
                     <td>{{ driver.formatted_checkout }}</td>

@@ -67,6 +67,7 @@ class Driver(db.Model):
     check_in_time = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('America/Chicago')).replace(microsecond=0))
     check_out_time = db.Column(db.DateTime, nullable=True)
     photo_path = db.Column(db.String(255), nullable=False)
+    plate_number = db.Column(db.String(50), nullable=True)
 
     # Add a unique constraint that only applies to active drivers
     __table_args__ = (
@@ -152,6 +153,7 @@ def drivers():
         purpose_of_visit = request.form.get("purpose_of_visit")
         point_of_contact = request.form.get("point_of_contact")
         photo_data = request.form.get("photo_data")
+        plate_number = request.form.get("plate_number")
 
         #if photo is provided but no license number, use placeholder
         if photo_data and not truck_license:
@@ -166,6 +168,7 @@ def drivers():
         print(f"Purpose of Visit: {purpose_of_visit}")
         print(f"Point of Contact: {point_of_contact}")
         print(f"Photo Data (first 100 chars): {photo_data[:100] if photo_data else 'No photo received'}\n")
+        print(f"License Plate number: {plate_number}")
 
         # Validate required fields
         if not all([driver_name, provider_name, truck_license, card_id, purpose_of_visit, point_of_contact]):
@@ -213,7 +216,8 @@ def drivers():
             card_id=card_id,
             purpose_of_visit=purpose_of_visit,
             point_of_contact=point_of_contact,
-            photo_path=photo_path
+            photo_path=photo_path,
+            plate_number=plate_number
         )
 
         try:
@@ -244,7 +248,8 @@ def drivers():
                     "card_id": new_driver.card_id,
                     "purpose_of_visit": new_driver.purpose_of_visit,
                     "point_of_contact": new_driver.point_of_contact,
-                    "photo_path": new_driver.photo_path
+                    "photo_path": new_driver.photo_path,
+                    "plate_number": new_driver.plate_number
                 }
             }), 200  # ✅ Returns JSON instead of redirecting
 
