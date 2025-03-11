@@ -128,7 +128,7 @@
                             <td>{{ driver.name }}</td>
                             <td>{{ driver.provider_name }}</td>
                             
-                            <td>{{ driver.formatted_check_in }}</td>
+                            <td>{{ driver.check_in_time }}</td>
             
                             <td>
                                 <form method="POST" action="{{ url_for('checkout', card_id=driver.card_id) }}" style="display:inline;">
