@@ -297,7 +297,8 @@ def checkout(card_id):
         return redirect(url_for("drivers"))
     
     try:
-        driver.check_out_time = datetime.now().replace(microsecond=0)
+        # Create a timezone-aware datetime object using LOCAL_TZ
+        driver.check_out_time = datetime.now(LOCAL_TZ).replace(microsecond=0)
         db.session.commit()
         
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -545,30 +546,31 @@ def admin_dashboard():
     for driver in all_drivers:
         # Format check-in time
         if driver.check_in_time:
-            # Check if time is naive (no timezone info)
+            # Use astimezone instead of localize to handle DST properly
             if driver.check_in_time.tzinfo is None:
-                # Times are already stored in local time - just need to format
-                local_time = LOCAL_TZ.localize(driver.check_in_time)
+                # Create aware datetime by assuming it's in local time already
+                aware_time = LOCAL_TZ.localize(driver.check_in_time, is_dst=None)
             else:
-                # Time already has timezone info
-                local_time = driver.check_in_time
+                aware_time = driver.check_in_time.astimezone(LOCAL_TZ)
             
-            driver.formatted_check_in = local_time.strftime('%Y-%m-%d %I:%M %p')
+            driver.formatted_check_in = aware_time.strftime('%Y-%m-%d %I:%M %p')
         else:
             driver.formatted_check_in = "No check-in time"
         
-        # Format check-out time
+        # Format check-out time - use the same approach for consistency
         if driver.check_out_time:
             if driver.check_out_time.tzinfo is None:
-                local_time = LOCAL_TZ.localize(driver.check_out_time)
+                # Create aware datetime by assuming it's in local time already
+                aware_time = LOCAL_TZ.localize(driver.check_out_time, is_dst=None)
             else:
-                local_time = driver.check_out_time
+                aware_time = driver.check_out_time.astimezone(LOCAL_TZ)
             
-            driver.formatted_checkout = local_time.strftime('%Y-%m-%d %I:%M %p')
+            driver.formatted_checkout = aware_time.strftime('%Y-%m-%d %I:%M %p')
         else:
             driver.formatted_checkout = "Still in warehouse"
     
     return render_template("admin.html", drivers=all_drivers, purpose_translations=purpose_translations)
+
 #route to handle admin exit event
 @app.route('/admin-exit', methods=['POST', 'GET'])
 def admin_exit():
