@@ -59,9 +59,9 @@
         <option value="Brenda Ceballos ">Brenda Ceballos </option>
     </select>
 
-    <label for="plate_number">License Plate Number:</label>
+    <!--<label for="plate_number">License Plate Number:</label>
     <input type="text" id="plate_number" name="plate_number" required>
-
+-->
     <!--<label for="truck_license">Driver License Number:</label>
     <div class="inline-field">
         <input type="text" id="truck_license" name="truck_license" required>
@@ -83,6 +83,25 @@
         </div>
       </div>
 
+    
+      <div class="photo-upload-area">
+        <label>License Plate Photo:</label>
+        <div class="photo-placeholder">
+            <img src="/static/plate.jpg" alt="Camera" id="plate-camera-icon">
+            <span>Click to take or upload photo</span>
+            <button type="button" id="plate-photo-button" class="inline-button">Take Photo</button>
+        </div>
+        <!-- First input: Placeholder value for License Plate -->
+        <input type="hidden" id="plate_number" name="plate_number" value="Photo Provided">
+        <!-- Second input: Stores the actual Base64 photo data -->
+        <input type="hidden" id="plate_photo_data" name="plate_photo_data">
+        <div id="plate-photo-preview" style="display: none;">
+            <img id="plate-preview-image" src="" alt="Preview">
+            <button type="button" id="retake-plate-photo-btn" class="btn">Retake</button>
+        </div>
+    </div>
+    
+
     <label for="card_id">Assign Card ID:</label>
     <input type="text" id="card_id" name="card_id" readonly required>
 
@@ -103,6 +122,14 @@
         <img id="popup-photo-preview" style="width: 100%; margin-top: 10px;" alt="Popup Photo Preview">
         <button type="button" id="confirm-button" style="margin-top: 10px;">Yes</button>
         <button type="button" id="retake-button" style="margin-top: 10px;">Retake</button>
+    </div>
+
+    <!-- License Plate Confirmation Popup -->
+    <div id="plate-confirmation-popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <p>Does the license plate photo look correct?</p>
+        <img id="plate-popup-photo-preview" style="width: 100%; margin-top: 10px;" alt="Popup Photo Preview">
+        <button type="button" id="plate-confirm-button" style="margin-top: 10px;">Yes</button>
+        <button type="button" id="plate-retake-button" style="margin-top: 10px;">Retake</button>
     </div>
 </form>
    
@@ -173,7 +200,7 @@
                 const purposeOfVisit = document.getElementById("purpose_of_visit").value || ""; // Ensure it's not null
                 const pointOfContact = document.getElementById("point_of_contact").value || ""; // Ensure it's not null
                 const photoData = document.getElementById("photo-data").value;
-                const plateNumber = document.getElementById("plate_number").value;
+                const platePhotoData = document.getElementById("plate_photo_data").value;
 
                 console.log("Sending Data:", {
     driver_name: driverName,
@@ -182,7 +209,7 @@
     purpose_of_visit: purposeOfVisit,
     point_of_contact: pointOfContact,
     photo_data: photoData,
-    plate_number: plateNumber
+    plate_photo_data: platePhotoData // <-- ADD THIS!
 });
 
                 formData.append("driver_name", driverName);
@@ -191,7 +218,7 @@
                 formData.append("purpose_of_visit", purposeOfVisit);
                 formData.append("point_of_contact", pointOfContact);
                 formData.append("photo_data", photoData);
-                formData.append("plate_number", plateNumber)
+                formData.append("plate_photo_data", platePhotoData); // <-- ADD THIS!
 
                 
                 fetch("/drivers", {
@@ -452,6 +479,166 @@ document.addEventListener("DOMContentLoaded", function () {
         photoDataInput.value = ""; // Clear the hidden input
     });
 });
+
+// === LICENSE PLATE PHOTO FUNCTIONALITY ===
+document.addEventListener("DOMContentLoaded", function () {
+    console.log("DOM fully loaded for License Plate Photo");
+
+    // Select License Plate elements
+    const platePhotoButton = document.getElementById("plate-photo-button");
+    const platePhotoDataInput = document.getElementById("plate_photo_data");
+    const platePopup = document.getElementById("plate-confirmation-popup");
+    const platePopupPhotoPreview = document.getElementById("plate-popup-photo-preview");
+    const plateConfirmButton = document.getElementById("plate-confirm-button");
+    const plateRetakeButton = document.getElementById("plate-retake-button");
+
+    console.log("License Plate Photo Elements found:", {
+        platePhotoButton: !!platePhotoButton,
+        platePhotoDataInput: !!platePhotoDataInput,
+        platePopup: !!platePopup,
+        platePopupPhotoPreview: !!platePopupPhotoPreview,
+        plateConfirmButton: !!plateConfirmButton,
+        plateRetakeButton: !!plateRetakeButton
+    });
+
+    function useFileInputFallback() {
+        console.log("Using file input fallback for License Plate");
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+
+        input.addEventListener("change", () => {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    platePopupPhotoPreview.src = e.target.result;
+                    platePhotoDataInput.value = e.target.result.split(',')[1]; // Remove prefix
+                    platePopup.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        input.click();
+    }
+
+    platePhotoButton.addEventListener("click", () => {
+        console.log("License Plate Photo button clicked");
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            console.log("MediaDevices API supported");
+
+            const videoElement = document.createElement("video");
+            videoElement.autoplay = true;
+            videoElement.style.display = "none";
+            document.body.appendChild(videoElement);
+
+            const canvasElement = document.createElement("canvas");
+            canvasElement.style.display = "none";
+            document.body.appendChild(canvasElement);
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(stream => {
+                    console.log("Camera access granted for License Plate");
+                    videoElement.srcObject = stream;
+
+                    const snapshotDiv = document.createElement("div");
+                    snapshotDiv.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background-color: rgba(0,0,0,0.8);
+                        z-index: 1000;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                    `;
+
+                    const previewVideo = document.createElement("video");
+                    previewVideo.autoplay = true;
+                    previewVideo.srcObject = stream;
+                    previewVideo.style.cssText = "width: 80%; max-height: 80vh; object-fit: contain;";
+
+                    const takePhotoBtn = document.createElement("button");
+                    takePhotoBtn.textContent = "Take Photo";
+                    takePhotoBtn.style.cssText = "margin-top: 10px; padding: 10px 20px;";
+
+                    const cancelBtn = document.createElement("button");
+                    cancelBtn.textContent = "Cancel";
+                    cancelBtn.style.cssText = "margin-top: 10px; padding: 10px 20px;";
+
+                    snapshotDiv.appendChild(previewVideo);
+                    snapshotDiv.appendChild(takePhotoBtn);
+                    snapshotDiv.appendChild(cancelBtn);
+                    document.body.appendChild(snapshotDiv);
+
+                    takePhotoBtn.addEventListener("click", () => {
+                        console.log("Take License Plate Photo button clicked");
+
+                        const width = previewVideo.videoWidth;
+                        const height = previewVideo.videoHeight;
+                        canvasElement.width = width;
+                        canvasElement.height = height;
+
+                        const context = canvasElement.getContext("2d");
+                        context.drawImage(previewVideo, 0, 0, width, height);
+
+                        let imageData = canvasElement.toDataURL("image/jpeg");
+
+                        console.log("Captured License Plate Image Base64:", imageData.substring(0, 100));
+
+                        let base64ImageData = imageData.split(",")[1];
+                        platePhotoDataInput.value = base64ImageData;
+
+                        console.log("Formatted Base64 License Plate Image Data:", base64ImageData.substring(0, 100));
+
+                        platePopupPhotoPreview.src = imageData;
+                        platePopup.style.display = "block";
+
+                        stream.getTracks().forEach(track => track.stop());
+                        document.body.removeChild(snapshotDiv);
+                        document.body.removeChild(videoElement);
+                        document.body.removeChild(canvasElement);
+                    });
+
+                    cancelBtn.addEventListener("click", () => {
+                        console.log("Cancel button clicked for License Plate Photo");
+                        stream.getTracks().forEach(track => track.stop());
+                        document.body.removeChild(snapshotDiv);
+                        document.body.removeChild(videoElement);
+                        document.body.removeChild(canvasElement);
+                    });
+
+                })
+                .catch(error => {
+                    console.error("Error accessing camera for License Plate:", error);
+                    useFileInputFallback();
+                });
+
+        } else {
+            console.log("MediaDevices API not supported for License Plate");
+            useFileInputFallback();
+        }
+    });
+
+    plateConfirmButton.addEventListener("click", () => {
+        console.log("Confirm button clicked for License Plate");
+        platePopup.style.display = "none";
+    });
+
+    plateRetakeButton.addEventListener("click", () => {
+        console.log("Retake button clicked for License Plate");
+        platePopup.style.display = "none";
+        platePhotoDataInput.value = "";
+    });
+});
+
+
+
 
     </script>
 </body>

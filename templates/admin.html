@@ -133,11 +133,11 @@ button:hover {
                     <th>License</th>
                     <th>Card ID</th>
                     <th>Purpose</th>
-                    <th>License Plate</th>
                     <th>Contact</th>
                     <th>Check-In</th>
                     <th>Check-Out</th>
                     <th>License Photo</th>
+                    <th>License Plate Photo</th> 
                 </tr>
             </thead>
             <tbody>
@@ -149,7 +149,6 @@ button:hover {
                     <td>{{ driver.truck_license }}</td>
                     <td>{{ driver.card_id }}</td>
                     <td>{{ purpose_translations.get(driver.purpose_of_visit, driver.purpose_of_visit) }}</td>
-                    <td>{{ driver.plate_number }}</td>
                     <td>{{ driver.point_of_contact }}</td>
                     <td>{{ driver.formatted_check_in }}</td>
                     <td>{{ driver.formatted_checkout }}</td>
@@ -157,6 +156,15 @@ button:hover {
                         {% if driver.photo_path %}
                         <a href="{{ driver.photo_path }}" target="_blank">
                             <img src="{{ driver.photo_path  }}" alt="License Photo" style="width: 100px; height: auto;">
+                        </a>
+                        {% else %}
+                        No photo
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if driver.plate_photo_path %}
+                        <a href="{{ driver.plate_photo_path }}" target="_blank">
+                            <img src="{{ driver.plate_photo_path }}" alt="Plate Photo" style="width: 100px; height: auto;">
                         </a>
                         {% else %}
                         No photo

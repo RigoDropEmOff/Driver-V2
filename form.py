@@ -16,7 +16,6 @@ import cloudinary.api
 app = Flask(__name__)
 app.secret_key = "my_secret_key"
 
-#password for i pad
 
 LOCAL_TZ = pytz.timezone("America/Chicago")
 
@@ -67,7 +66,7 @@ class Driver(db.Model):
     check_in_time = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('America/Chicago')).replace(microsecond=0))
     check_out_time = db.Column(db.DateTime, nullable=True)
     photo_path = db.Column(db.String(255), nullable=False)
-    plate_number = db.Column(db.String(50), nullable=True)
+    plate_photo_path = db.Column(db.String(255), nullable=True)
 
     # Add a unique constraint that only applies to active drivers
     __table_args__ = (
@@ -79,7 +78,7 @@ class Driver(db.Model):
     def __repr__(self):
         return f"Driver('{self.name}', '{self.provider_name}', '{self.card_id}')"
 
-def save_photo(photo_data, driver_license):
+def save_photo(photo_data, identifier, folder_name='driver_license'):
     if not photo_data:
         print("No photo data provided.")
         return None
@@ -106,13 +105,13 @@ def save_photo(photo_data, driver_license):
         #create url-friendly filename without spaces or special characters
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         #Replace spaces with underscores and remove special characters
-        safe_license = "".join(c for c in driver_license if c.isalnum() or c in "_-").replace(" ", "_")
-        filename = f"{safe_license}_{timestamp}.jpg"
+        safe_identifier = "".join(c for c in identifier if c.isalnum() or c in "_-").replace(" ", "_")
+        filename = f"{safe_identifier}_{timestamp}.jpg"
         
         #upload image to cloudinary
         upload_result = cloudinary.uploader.upload(
             f"data:image/jpeg;base64,{base64_data}",
-            public_id = f"driver_license/{filename}",
+            public_id = f"{folder_name}/{filename}",
             folder = "driver_app",
             upload_preset="Royal-30days",
             invalidate=True,
@@ -141,6 +140,11 @@ def index():
 @app.route("/drivers", methods=["GET", "POST"])
 def drivers():
     print(">>Route Accessed:", request.method)
+
+    #initialize variables to avoid UnboundLocalError
+    photo_data = ""
+    plate_photo_data = ""
+    
     if request.method == "POST":
         #Detect of request is an AJAX request
         is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
@@ -152,8 +156,8 @@ def drivers():
         card_id = request.form.get("card_id")
         purpose_of_visit = request.form.get("purpose_of_visit")
         point_of_contact = request.form.get("point_of_contact")
-        photo_data = request.form.get("photo_data")
-        plate_number = request.form.get("plate_number")
+        photo_data = request.form.get("photo_data", "")
+        plate_photo_data = request.form.get("plate_photo_data", "")  # License Plate Photo
 
         #if photo is provided but no license number, use placeholder
         if photo_data and not truck_license:
@@ -168,7 +172,7 @@ def drivers():
         print(f"Purpose of Visit: {purpose_of_visit}")
         print(f"Point of Contact: {point_of_contact}")
         print(f"Photo Data (first 100 chars): {photo_data[:100] if photo_data else 'No photo received'}\n")
-        print(f"License Plate number: {plate_number}")
+        print(f"License Plate Photo Data (first 100 chars): {plate_photo_data[:100] if plate_photo_data else 'No photo received'}\n")
 
         # Validate required fields
         if not all([driver_name, provider_name, truck_license, card_id, purpose_of_visit, point_of_contact]):
@@ -196,16 +200,27 @@ def drivers():
             #flash(error_message, "error")
             #return redirect(url_for("drivers"))
 
-        # Save photo if provided
-        photo_path = None
-        if photo_data:
-            print("📌 Calling save_photo() to process image...")
-            photo_path = save_photo(photo_data, truck_license)
+        # Save photos if provided
+    photo_path = None
+    plate_photo_path = None
 
-            if photo_path:
-                print(f"📌 Photo saved at: {photo_path}\n")
-            else:
-                print("❌ Failed to save photo\n")
+    if photo_data:
+        print("📌 Calling save_photo() for driver's license...")
+        photo_path = save_photo(photo_data, truck_license, "driver_license")
+
+        if photo_path:
+            print(f"✅ Driver's License Photo saved at: {photo_path}\n")
+        else:
+            print("❌ Failed to save driver's license photo\n")
+
+    if plate_photo_data:
+        print("📌 Calling save_photo() for license plate...")
+        plate_photo_path = save_photo(plate_photo_data, card_id, "plate_photos")
+
+        if plate_photo_path:
+            print(f"✅ License Plate Photo saved at: {plate_photo_path}\n")
+        else:
+            print("❌ Failed to save license plate photo\n")
            
         
         # Create new driver record
@@ -217,7 +232,7 @@ def drivers():
             purpose_of_visit=purpose_of_visit,
             point_of_contact=point_of_contact,
             photo_path=photo_path,
-            plate_number=plate_number
+            plate_photo_path=plate_photo_path  # License Plate Photo
         )
 
         try:
@@ -249,7 +264,7 @@ def drivers():
                     "purpose_of_visit": new_driver.purpose_of_visit,
                     "point_of_contact": new_driver.point_of_contact,
                     "photo_path": new_driver.photo_path,
-                    "plate_number": new_driver.plate_number
+                    "plate_number": new_driver.plate_photo_path
                 }
             }), 200  # ✅ Returns JSON instead of redirecting
 
