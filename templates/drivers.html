@@ -45,7 +45,7 @@
         <option value="reunión">Meeting</option>
         <option value="inspeccion">Inspection</option>
         <option value="reparacion de cajas">Trailer Repair</option>
-        <option value="Guardia">Security</option>
+        <option value="Guardia">Interchange</option>
         <option value="otros">Other</option>
     </select>
 
@@ -68,7 +68,7 @@
         <button type="button" id="photo-button" class="inline-button">Take Photo of Driver License</button>
     </div>-->
 
-    <div class="photo-upload-area">
+    <div class="photo-upload-area" id="license-photo-section">
         <label>License Photo:</label>
         <div class="photo-placeholder">
           <img src="/static/driver-license-icon-jpg.png" alt="Camera" id="camera-icon">
@@ -84,7 +84,7 @@
       </div>
 
     
-      <div class="photo-upload-area">
+      <div class="photo-upload-area" id="plate-photo-section">
         <label>License Plate Photo:</label>
         <div class="photo-placeholder">
             <img src="/static/plate.jpg" alt="Camera" id="plate-camera-icon">
@@ -155,7 +155,7 @@
                             <td>{{ driver.name }}</td>
                             <td>{{ driver.provider_name }}</td>
                             
-                            <td>{{ driver.check_in_time }}</td>
+                            <td>{{ driver.formatted_check_in}}</td>
             
                             <td>
                                 <form method="POST" action="{{ url_for('checkout', card_id=driver.card_id) }}" style="display:inline;">
@@ -637,7 +637,34 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
+document.addEventListener("DOMContentLoaded", function () {
+    // Select elements
+    const purposeSelect = document.getElementById("purpose_of_visit");
+    const licensePhotoSection = document.getElementById("license-photo-section");
+    const platePhotoSection = document.getElementById("plate-photo-section");
 
+    // Define purposes that don't require a photo
+    const exemptPurposes = ["security", "guardia"];
+
+    // Function to toggle visibility based on selection
+    function togglePhotoFields() {
+        const selectedPurpose = purposeSelect.value.toLowerCase(); // Convert to lowercase for consistency
+        
+        if (exemptPurposes.includes(selectedPurpose)) {
+            licensePhotoSection.style.display = "none"; // Hide Driver License Photo
+            platePhotoSection.style.display = "none"; // Hide License Plate Photo
+        } else {
+            licensePhotoSection.style.display = "block"; // Show Driver License Photo
+            platePhotoSection.style.display = "block"; // Show License Plate Photo
+        }
+    }
+
+    // Run function on page load (if "Security" or "Guardia" is pre-selected)
+    togglePhotoFields();
+
+    // Add event listener to dropdown
+    purposeSelect.addEventListener("change", togglePhotoFields);
+});
 
 
     </script>

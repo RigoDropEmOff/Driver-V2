@@ -65,7 +65,7 @@ class Driver(db.Model):
     point_of_contact = db.Column(db.String(100), nullable=False)
     check_in_time = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('America/Chicago')).replace(microsecond=0))
     check_out_time = db.Column(db.DateTime, nullable=True)
-    photo_path = db.Column(db.String(255), nullable=False)
+    photo_path = db.Column(db.String(255), nullable=True)
     plate_photo_path = db.Column(db.String(255), nullable=True)
 
     # Add a unique constraint that only applies to active drivers
@@ -141,15 +141,11 @@ def index():
 def drivers():
     print(">>Route Accessed:", request.method)
 
-    #initialize variables to avoid UnboundLocalError
-    photo_data = ""
-    plate_photo_data = ""
-    
     if request.method == "POST":
-        #Detect of request is an AJAX request
+        # Detect if request is an AJAX request
         is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
         
-        #get form data
+        # Get form data
         driver_name = request.form.get("driver_name")
         provider_name = request.form.get("provider_name")
         truck_license = request.form.get("truck_license")
@@ -157,13 +153,18 @@ def drivers():
         purpose_of_visit = request.form.get("purpose_of_visit")
         point_of_contact = request.form.get("point_of_contact")
         photo_data = request.form.get("photo_data", "")
-        plate_photo_data = request.form.get("plate_photo_data", "")  # License Plate Photo
+        plate_photo_data = request.form.get("plate_photo_data", "")
 
-        #if photo is provided but no license number, use placeholder
+        # If photo is provided but no license number, use placeholder
         if photo_data and not truck_license:
             truck_license = "Photo Provided"
 
-        # 📌 Debugging: Print received data to verify what Flask gets
+        # ✅ If purpose is "Security/Guardia", photos are not required
+        if purpose_of_visit.lower() in ["security", "guardia"]:
+            photo_data = None
+            plate_photo_data = None
+
+        # 📌 Debugging: Print received data
         print("\n📌 Received Form Data:")
         print(f"Driver Name: {driver_name}")
         print(f"Provider Name: {provider_name}")
@@ -171,59 +172,67 @@ def drivers():
         print(f"Card ID: {card_id}")
         print(f"Purpose of Visit: {purpose_of_visit}")
         print(f"Point of Contact: {point_of_contact}")
-        print(f"Photo Data (first 100 chars): {photo_data[:100] if photo_data else 'No photo received'}\n")
+        print(f"Photo Data (first 100 chars): {photo_data[:100] if photo_data else 'No photo received'}")
         print(f"License Plate Photo Data (first 100 chars): {plate_photo_data[:100] if plate_photo_data else 'No photo received'}\n")
 
         # Validate required fields
         if not all([driver_name, provider_name, truck_license, card_id, purpose_of_visit, point_of_contact]):
             error_message = "All fields are required"
             print(f"❌ {error_message}\n")
-
             if is_ajax:
                 return jsonify({"success": False, "message": error_message}), 400
             flash(error_message, "error")
             return redirect(url_for("drivers"))
+
+        # If purpose is NOT "Security", require license and plate photos
+        if purpose_of_visit.lower() not in ["security", "guardia"]:
+            if not photo_data:
+                error_message = "Driver license photo is required"
+                print(f"❌ {error_message}\n")
+                if is_ajax:
+                    return jsonify({"success": False, "message": error_message}), 400
+                flash(error_message, "error")
+                return redirect(url_for("drivers"))
+            
+            if not plate_photo_data:
+                error_message = "License Plate photo is required"
+                print(f"❌ {error_message}\n")
+                if is_ajax:
+                    return jsonify({"success": False, "message": error_message}), 400
+                flash(error_message, "error")
+                return redirect(url_for("drivers"))
 
         # Check if card is already assigned to an active driver
         existing_driver = Driver.query.filter_by(card_id=card_id, check_out_time=None).first()
         if existing_driver:
             error_message = "Card ID already in use by another driver"
             print(f"❌ {error_message}\n")
-            
             if is_ajax:
                 return jsonify({"success": False, "message": error_message}), 400
             flash(error_message, 'error')
             return redirect(url_for('drivers'))
 
-            #if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                #return jsonify({"success": False, "message": error_message}), 400
-            #flash(error_message, "error")
-            #return redirect(url_for("drivers"))
-
         # Save photos if provided
-    photo_path = None
-    plate_photo_path = None
+        photo_path = None
+        plate_photo_path = None
 
-    if photo_data:
-        print("📌 Calling save_photo() for driver's license...")
-        photo_path = save_photo(photo_data, truck_license, "driver_license")
+        if photo_data:
+            print("📌 Calling save_photo() for driver's license...")
+            photo_path = save_photo(photo_data, truck_license, "driver_license")
+            if photo_path:
+                print(f"✅ Driver's License Photo saved at: {photo_path}\n")
+            else:
+                print("❌ Failed to save driver's license photo\n")
 
-        if photo_path:
-            print(f"✅ Driver's License Photo saved at: {photo_path}\n")
-        else:
-            print("❌ Failed to save driver's license photo\n")
+        if plate_photo_data:
+            print("📌 Calling save_photo() for license plate...")
+            plate_photo_path = save_photo(plate_photo_data, card_id, "plate_photos")
+            if plate_photo_path:
+                print(f"✅ License Plate Photo saved at: {plate_photo_path}\n")
+            else:
+                print("❌ Failed to save license plate photo\n")
 
-    if plate_photo_data:
-        print("📌 Calling save_photo() for license plate...")
-        plate_photo_path = save_photo(plate_photo_data, card_id, "plate_photos")
-
-        if plate_photo_path:
-            print(f"✅ License Plate Photo saved at: {plate_photo_path}\n")
-        else:
-            print("❌ Failed to save license plate photo\n")
-           
-        
-        # Create new driver record
+        # ✅ Create new driver record
         new_driver = Driver(
             name=driver_name,
             provider_name=provider_name,
@@ -239,34 +248,34 @@ def drivers():
             db.session.add(new_driver)
             db.session.commit()
 
-            #check if purpose is security to send email
+            # ✅ Send security notification if purpose is "Security/Guardia"
             if purpose_of_visit.lower() in ["security", "guardia"]:
                 send_security_notification(new_driver)
 
-            print(f"Driver added: {new_driver.name}, Card ID: {new_driver.card_id}, Check-out time: {new_driver.check_out_time}")
+            print(f"✅ Driver added: {new_driver.name}, Card ID: {new_driver.card_id}, Check-out time: {new_driver.check_out_time}")
 
             # Query to verify the driver was added correctly
             added_driver = Driver.query.filter_by(card_id=new_driver.card_id).first()
-            print(f"Driver from DB: {added_driver.name}, Card ID: {added_driver.card_id}, Check-out time: {added_driver.check_out_time}")
+            print(f"✅ Driver from DB: {added_driver.name}, Card ID: {added_driver.card_id}, Check-out time: {added_driver.check_out_time}")
 
             success_message = "Driver checked in successfully"
 
             if is_ajax:
                 return jsonify({
-                "success": True,
-                "message": success_message,
-                "driver": {
-                    "id": new_driver.id,
-                    "name": new_driver.name,
-                    "provider_name": new_driver.provider_name,
-                    "truck_license": new_driver.truck_license,
-                    "card_id": new_driver.card_id,
-                    "purpose_of_visit": new_driver.purpose_of_visit,
-                    "point_of_contact": new_driver.point_of_contact,
-                    "photo_path": new_driver.photo_path,
-                    "plate_number": new_driver.plate_photo_path
-                }
-            }), 200  # ✅ Returns JSON instead of redirecting
+                    "success": True,
+                    "message": success_message,
+                    "driver": {
+                        "id": new_driver.id,
+                        "name": new_driver.name,
+                        "provider_name": new_driver.provider_name,
+                        "truck_license": new_driver.truck_license,
+                        "card_id": new_driver.card_id,
+                        "purpose_of_visit": new_driver.purpose_of_visit,
+                        "point_of_contact": new_driver.point_of_contact,
+                        "photo_path": new_driver.photo_path,
+                        "plate_photo_path": new_driver.plate_photo_path
+                    }
+                }), 200  # ✅ Returns JSON instead of redirecting
 
             flash(success_message, "success")
             return redirect(url_for("drivers"))  # ⛔️ Avoids redirect for AJAX
@@ -282,17 +291,18 @@ def drivers():
             flash(error_message, "error")
             return redirect(url_for("drivers"))
 
-    # GET request - display all active drivers
+    # ✅ GET request - display all active drivers
     active_drivers = Driver.query.filter_by(check_out_time=None).all()
+
 
     for driver in active_drivers:
         if driver.check_in_time:
-            # Ensure check_in_time has timezone info
             if driver.check_in_time.tzinfo is None:
-                # If naive datetime, assume it's in UTC and convert to local timezone
-                driver.formatted_check_in = driver.check_in_time.replace(tzinfo=pytz.UTC).astimezone(LOCAL_TZ).strftime('%m-%d-%Y %I:%M %p')
+                 # Create aware datetime by assuming it's in local time already
+                aware_time = LOCAL_TZ.localize(driver.check_in_time, is_dst=None)
             else:
-                driver.formatted_check_in = driver.check_in_time.astimezone(LOCAL_TZ).strftime('%m-%d-%Y %I:%M %p')
+                aware_time = driver.check_in_time.astimezone(LOCAL_TZ)
+            driver.formatted_check_in = aware_time.strftime('%Y-%m-%d %I:%M %p')
         else:
             driver.formatted_check_in = "No check-in time"
 
@@ -300,6 +310,7 @@ def drivers():
         return jsonify({"success": True, "drivers": [d.to_dict() for d in active_drivers]})
 
     return render_template("drivers.html", drivers=active_drivers)
+
 
 @app.route("/checkout/<card_id>", methods=["POST"])
 def checkout(card_id):
@@ -399,14 +410,14 @@ def send_security_notification(driver):
         ]
 
         #Email Subject
-        subject = f"Security Check-In Alert: {driver.name}"
+        subject = f"Interchange Check-In Alert: {driver.name}"
 
         #email body
         email_body = f'''
         <html>
         <body>
-            <h2>Security Check-In Notification</h2>
-            <p>A driver has checked in with Security purpose:</p>
+            <h2>InterExchange Check-In Notification</h2>
+            <p>A driver has checked in with an Interchange purpose:</p>
             <table border="1" cellpadding="5" style="border-collapse: collapse;">
                 <tr><th>Name</th><td>{driver.name}</td></tr>
                 <tr><th>Provider</th><td>{driver.provider_name}</td></tr>
@@ -415,7 +426,6 @@ def send_security_notification(driver):
                 <tr><th>Purpose of Visit</th><td>{driver.purpose_of_visit}</td></tr>
                 <tr><th>Point of Contact</th><td>{driver.point_of_contact}</td></tr>
                 <tr><th>Check-in Time</th><td>{driver.check_in_time}</td></tr>
-                <p>Driver License Photo: <a href="{driver.photo_path}">View Photo</a></p>
             </table>
         </body>
         </html>
