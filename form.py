@@ -299,7 +299,7 @@ def drivers():
         if driver.check_in_time:
             if driver.check_in_time.tzinfo is None:
                  # Create aware datetime by assuming it's in local time already
-                aware_time = LOCAL_TZ.localize(driver.check_in_time, is_dst=None)
+                aware_time = pytz.UTC.localize(driver.check_in_time).astimezone(LOCAL_TZ)
             else:
                 aware_time = driver.check_in_time.astimezone(LOCAL_TZ)
             driver.formatted_check_in = aware_time.strftime('%Y-%m-%d %I:%M %p')
