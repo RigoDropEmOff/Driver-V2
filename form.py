@@ -573,8 +573,8 @@ def admin_dashboard():
         if driver.check_in_time:
             # Use astimezone instead of localize to handle DST properly
             if driver.check_in_time.tzinfo is None:
-                # Create aware datetime by assuming it's in local time already
-                aware_time = LOCAL_TZ.localize(driver.check_in_time, is_dst=None)
+                # If naive datetime, assume it's in UTC first, then convert
+                aware_time = pytz.UTC.localize(driver.check_in_time).astimezone(LOCAL_TZ)
             else:
                 aware_time = driver.check_in_time.astimezone(LOCAL_TZ)
             
@@ -585,8 +585,8 @@ def admin_dashboard():
         # Format check-out time - use the same approach for consistency
         if driver.check_out_time:
             if driver.check_out_time.tzinfo is None:
-                # Create aware datetime by assuming it's in local time already
-                aware_time = LOCAL_TZ.localize(driver.check_out_time, is_dst=None)
+                # If naive datetime, assume it's in UTC first, then convert
+                aware_time = pytz.UTC.localize(driver.check_out_time).astimezone(LOCAL_TZ)
             else:
                 aware_time = driver.check_out_time.astimezone(LOCAL_TZ)
             
