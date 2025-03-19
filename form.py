@@ -617,6 +617,48 @@ def check_model():
             })
     return jsonify(table_info)
 
+@app.route('/diagnose-db')
+def diagnose_db():
+    try:
+        # Get database type
+        db_type = app.config['SQLALCHEMY_DATABASE_URI'].split(':')[0]
+        
+        # Count records
+        all_drivers = Driver.query.all()
+        all_driver_data = [{
+            "id": d.id,
+            "name": d.name,
+            "check_in_time": str(d.check_in_time),
+            "check_out_time": str(d.check_out_time)
+        } for d in all_drivers[:10]]  # Limit to 10 records
+        
+        # Check if database file exists (for SQLite)
+        db_file_exists = False
+        if db_type == 'sqlite':
+            db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+            db_file_exists = os.path.exists(db_path)
+        
+        # Get environment variables
+        database_url = os.environ.get('DATABASE_URL', 'Not set')
+        if database_url.startswith('postgres'):
+            database_url = 'PostgreSQL configured (details hidden)'
+            
+        return jsonify({
+            "db_type": db_type,
+            "database_url_env": database_url != 'Not set',
+            "total_records": len(all_drivers),
+            "db_file_exists": db_file_exists,
+            "sample_records": all_driver_data,
+            "app_start_time": str(datetime.now())
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)})
+    
+@app.route('/setup-db')
+def setup_db():
+    db.create_all()
+    return "Database tables created!"
+
 
 
 if __name__ == "__main__":
